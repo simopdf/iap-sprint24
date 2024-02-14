@@ -32,11 +32,20 @@ class f(point):
     def to_width(self):
         f0_rad = np.radians(self.f)
         return [point(-np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane(), point(np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane()]
+
     
     def to_angle(self,G,D):
         l = (np.abs(G.to_sphere().x)) + np.abs((D.to_sphere().x))
         return f(360 - 2*np.degrees(np.arcsin(0.5*l)))
     
+    def L(self):
+        return 2*np.abs(self.to_width()[0].x)
+
+
+
+         
     
+
+
      
 
