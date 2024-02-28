@@ -12,6 +12,8 @@ class point:
         
     def vars(self): #on transforme le point en un tuple [.vars()] -> (x,y,z)
         return (self.x,self.y,self.z)
+    def vect(self):
+        return np.asarray(self.vars())
 
     def to_plane(self):
         return point(2*self.x/(1+self.z),2*self.y/(1+self.z))
@@ -29,7 +31,7 @@ class f(point):
     
 
 
-    def to_width(self):
+    def to_width(self):   #donne les coordonnées de G et D en sachant l'angle f
         f0_rad = np.radians(self.f)
         return [point(-np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane(), point(np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane()]
 
@@ -38,9 +40,56 @@ class f(point):
         l = (np.abs(G.to_sphere().x)) + np.abs((D.to_sphere().x))
         return f(360 - 2*np.degrees(np.arcsin(0.5*l)))
     
-    def L(self):
+    def L(self):  #donne la largeur de l'ecran 
         return 2*np.abs(self.to_width()[0].x)
     
+
+
+
+
+
+
+#################################################
+    
+class Rotation(point):
+
+    def __init__(self,psi = 0, theta = 0, phi = 0):
+        self.psi= np.radians(psi)
+        self.theta = np.radians(theta)
+        self.phi = np.radians(phi)
+        
+
+        R_3 = np.array([[np.cos(self.psi),np.sin(self.psi),0],
+                    [-np.sin(self.psi),np.cos(self.psi),0],
+                    [0,            0,         1]])
+
+        R_2 = np.array([[1,          0,                0],
+                    [0, np.cos(self.theta),-np.sin(self.theta)],
+                    [0, np.sin(self.theta), np.cos(self.theta)]])
+
+        R_1 = np.array([[np.cos(self.phi),np.sin(self.phi),0],
+                    [-np.sin(self.phi),np.cos(self.phi),0],
+                    [0,            0,         1]])
+        
+        self.R3= R_3
+        self.R2= R_2
+        self.R1= R_1
+    
+    def to_sun(self,vect): #Tranformation  de (nx,ny,nz) à (nu,nv,nw)
+        return vect.vect() @ (self.R3 @ self.R2 @ self.R1)
+    
+    def to_cam(self,vect): #Tranformation  de (nu,nv,nw) à (nx,ny,nz)
+        return vect.vect() @ np.linalg.inv(self.R3 @ self.R2 @ self.R1)
+
+print(Rotation(10,20,10).to_sun(point(0,0,1))) ### Testé à la main OK!
+print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
+
+
+
+
+
+    
+
 
 
 
