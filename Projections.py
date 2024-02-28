@@ -40,6 +40,8 @@ class f(point):
     
     def L(self):
         return 2*np.abs(self.to_width()[0].x)
+    
+
 
 
 
