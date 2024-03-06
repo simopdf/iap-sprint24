@@ -38,30 +38,29 @@ class f(point):
 
     def to_width(self):   #donne les coordonnées de G et D en sachant l'angle f
         f0_rad = np.radians(self.f)
-        return [point(-np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane(), point(np.sin(f0_rad/2),0,np.cos(f0_rad/2)).to_plane()]
+        return [point(-np.sin(f0_rad/2),0,np.cos(f0_rad/2)).stereo(), point(np.sin(f0_rad/2),0,np.cos(f0_rad/2)).stereo()]
 
     
     def to_angle(self,G,D):
-        l = (np.abs(G.to_sphere().x)) + np.abs((D.to_sphere().x))
+        l = (np.abs(G.invstereo().x)) + np.abs((D.invstereo().x))
         return f(360 - 2*np.degrees(np.arcsin(0.5*l)))
     
     def L(self):  #donne la largeur de l'ecran 
         return 2*np.abs(self.to_width()[0].x)
     
-
     
-class point(f):
+class point(point):
 
-    def screen(self, resX, resY,f):
+    def screen(self, resX, resY):
         x,y,_ = self.stereo().vars()
-        L = f.L()
+        L = f().L()
 
         X = (2*x/L)*resX + resX/2
         Y = (2*y/L)*resX + resY/2
         return point(X,Y)
 
-    def invscreen(self,resX,resY,f):
-        L = f.L()
+    def invscreen(self,resX,resY):
+        L = f().L()
         X = self.x
         Y = self.y
 
@@ -80,7 +79,7 @@ class point(f):
     
 class Rotation(point):
 
-    def __init__(self,psi = 0, theta = 0, phi = 0):
+    def __init__(self, psi = 0, theta = 0, phi = 0):
         self.psi= np.radians(psi)
         self.theta = np.radians(theta)
         self.phi = np.radians(phi)
@@ -108,10 +107,9 @@ class Rotation(point):
     def to_cam(self,vect): #Tranformation  de (nu,nv,nw) à (nx,ny,nz)
         return vect.vect() @ np.linalg.inv(self.R3 @ self.R2 @ self.R1)
 
+
 print(Rotation(10,20,10).to_sun(point(0,0,1))) ### Testé à la main OK!
 print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
-
-
 
 
 
@@ -119,7 +117,7 @@ print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
 
 
 
-
+point(1,2,1).screen(720,1920)
 
 
 
