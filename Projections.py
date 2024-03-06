@@ -1,6 +1,9 @@
 ##Projections
 import numpy as np
 
+#valeur défault de f:
+F = 90
+
 
 class point:
     def __init__(self,x0=0.,y0=0.,z0=None):
@@ -15,15 +18,17 @@ class point:
     def vect(self):
         return np.asarray(self.vars())
 
-    def to_plane(self):
+    def stereo(self):
+        '''Sphere -> To plane'''
         return point(2*self.x/(1+self.z),2*self.y/(1+self.z))
-    def to_sphere(self):
+    def invstereo(self):
+        '''Plane -> To sphere'''
         return point(4*self.x/(4+self.x**2+self.y**2),4*self.y/(4+self.x**2+self.y**2),(4-self.x**2-self.y**2)/(4+self.x**2+self.y**2))
     
 
 
 class f(point):
-    def __init__(self,f0=None):
+    def __init__(self,f0=F):
         self.f=f0
 
     def __repr__(self):
@@ -43,6 +48,28 @@ class f(point):
     def L(self):  #donne la largeur de l'ecran 
         return 2*np.abs(self.to_width()[0].x)
     
+
+    
+class point(f):
+
+    def screen(self, resX, resY,f):
+        x,y,_ = self.stereo().vars()
+        L = f.L()
+
+        X = (2*x/L)*resX + resX/2
+        Y = (2*y/L)*resX + resY/2
+        return point(X,Y)
+
+    def invscreen(self,resX,resY,f):
+        L = f.L()
+        X = self.x
+        Y = self.y
+
+        x = (X - resX/2)*L/(2*resX)
+        y = (Y - resY/2)*L/(2*resX)
+
+        return point(x,y)
+
 
 
 
@@ -88,7 +115,9 @@ print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
 
 
 
-    
+# Fonction qui associe à un couple d'angles une couleur
+
+
 
 
 
