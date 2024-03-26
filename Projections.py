@@ -24,7 +24,9 @@ class point:
     def invstereo(self):
         '''Plane -> To sphere'''
         return point(4*self.x/(4+self.x**2+self.y**2),4*self.y/(4+self.x**2+self.y**2),(4-self.x**2-self.y**2)/(4+self.x**2+self.y**2))
+
     
+#################################################
 
 
 class f(point):
@@ -49,31 +51,11 @@ class f(point):
         return 2*np.abs(self.to_width()[0].x)
     
     
-class point(point):
-
-    def screen(self, resX, resY):
-        x,y,_ = self.stereo().vars()
-        L = f().L()
-
-        X = (2*x/L)*resX + resX/2
-        Y = (2*y/L)*resX + resY/2
-        return point(X,Y)
-
-    def invscreen(self,resX,resY):
-        L = f().L()
-        X = self.x
-        Y = self.y
-
-        x = (X - resX/2)*L/(2*resX)
-        y = (Y - resY/2)*L/(2*resX)
-
-        return point(x,y)
-
-
-######## à tester
+#################################################
 
 
 def screen(self, resX, resY):
+    #plan -> ecran
     x,y,_ = self.stereo().vars()
     L = f().L()
 
@@ -81,7 +63,9 @@ def screen(self, resX, resY):
     Y = (2*y/L)*resX + resY/2
     return point(X,Y)
 
+
 def invscreen(self,resX,resY):
+    #ecran -> plan
     L = f().L()
     X = self.x
     Y = self.y
@@ -132,21 +116,28 @@ class Rotation(point):
         return vect.vect() @ np.linalg.inv(self.R3 @ self.R2 @ self.R1)
 
 
+#####################################################
+def cartesian_to_spherical(self):
+    r = np.sqrt(self.x**2 + self.y**2 + self.z**2)
+    theta = np.arctan2(self.z, np.sqrt(self.x**2 + self.y**2))
+    phi = np.arctan2(self.y,self.x)
+    return (r, theta, phi)
+
+point.spherical_coords = cartesian_to_spherical
+
+
+####### Test
+
+
 print(Rotation(10,20,10).to_sun(point(0,0,1))) ### Testé à la main OK!
 print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
-
-
-
-# Fonction qui associe à un couple d'angles une couleur
-
-
 
 point(1,2,1).screen(720,1920)
 
 
 
          
-    
+coords = point()
 
 
      
