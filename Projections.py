@@ -70,6 +70,30 @@ class point(point):
         return point(x,y)
 
 
+######## à tester
+
+
+def screen(self, resX, resY):
+    x,y,_ = self.stereo().vars()
+    L = f().L()
+
+    X = (2*x/L)*resX + resX/2
+    Y = (2*y/L)*resX + resY/2
+    return point(X,Y)
+
+def invscreen(self,resX,resY):
+    L = f().L()
+    X = self.x
+    Y = self.y
+
+    x = (X - resX/2)*L/(2*resX)
+    y = (Y - resY/2)*L/(2*resX)
+
+    return point(x,y)
+
+
+point.screen = screen # add methods screen and invscreen to point. methods employ f class
+point.invscreen = invscreen
 
 
 
