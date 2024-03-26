@@ -28,7 +28,7 @@ def angle_to_colour(phi, theta):
 
 def pixel_to_colour(resX, resY, f, coords, psi, theta, phi):
     
-    sphere = coords.invscreen(resX,resY).invstereo()  #passage des coordonnees de l'ecran aux coordonnes sur la sphere
+    sphere = coords.invscreen(resX,resY,f).invstereo()  #passage des coordonnees de l'ecran aux coordonnes sur la sphere
     
     tourne = P.Rotation(psi,theta,phi).to_sun(sphere)  #applique la rotation voulue au point
     
@@ -53,11 +53,11 @@ def paint():
     for i in range(height):
         # Replissage d'une ligne
         for j in range(width-1):
-            r, g, b = pixel_to_colour(160, 90, 45, point(j,i), 0, 20, 0)
+            r, g, b = pixel_to_colour(160, 90, 90, P.point(j,i), 0, 30, 40)
             image = image + f"{r} {g} {b} "
 
         # Passage a la ligne
-        r, g, b = pixel_to_colour(160, 90, 45, point(j,i), 0, 20, 0)
+        r, g, b = pixel_to_colour(160, 90, 90, P.point(j,i), 0, 30, 40)
         image = image + f"{r} {g} {b}\n"
     
     # Save the PPM image as a binary file
