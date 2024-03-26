@@ -17,6 +17,7 @@ class point:
         return (self.x,self.y,self.z)
     def vect(self):
         return np.asarray(self.vars())
+    
 
     def stereo(self):
         '''Sphere -> To plane'''
@@ -54,19 +55,19 @@ class f(point):
 #################################################
 
 
-def screen(self, resX, resY):
+def screen(self, resX, resY, f_screen = F):
     #plan -> ecran
     x,y,_ = self.stereo().vars()
-    L = f().L()
+    L = f(f_screen).L()
 
     X = (2*x/L)*resX + resX/2
     Y = (2*y/L)*resX + resY/2
     return point(X,Y)
 
 
-def invscreen(self,resX,resY):
+def invscreen(self,resX,resY, f_screen = F):
     #ecran -> plan
-    L = f().L()
+    L = f(f_screen).L()
     X = self.x
     Y = self.y
 
@@ -110,10 +111,18 @@ class Rotation(point):
         self.R1= R_1
     
     def to_sun(self,vect): #Tranformation  de (nx,ny,nz) à (nu,nv,nw)
-        return vect.vect() @ (self.R3 @ self.R2 @ self.R1)
+        vect_rot = vect.vect() @ (self.R3 @ self.R2 @ self.R1)
+
+        x,y,z = vect_rot.tolist() #conversion np.array -> liste -> point
+        
+        return point(x,y,z)
     
     def to_cam(self,vect): #Tranformation  de (nu,nv,nw) à (nx,ny,nz)
-        return vect.vect() @ np.linalg.inv(self.R3 @ self.R2 @ self.R1)
+        vect_rot = vect.vect() @ np.linalg.inv(self.R3 @ self.R2 @ self.R1)
+
+        x,y,z = vect_rot.tolist() #conversion np.array -> liste -> point
+        
+        return point(x,y,z)
 
 
 #####################################################
@@ -139,6 +148,6 @@ point(1,2,1).screen(720,1920)
          
 coords = point()
 
-
+print("All good")
      
 
