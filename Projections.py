@@ -183,7 +183,7 @@ L = np.linspace(0,5,5)
 
 tab = tab_point(H,K,L)
 
-tab_exe(tab,'stereo'))
+tab_exe(tab,'stereo')
          
 coords = point()
 
