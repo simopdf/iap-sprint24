@@ -6,12 +6,22 @@ F = 90
 
 
 class point:
-    def __init__(self,x0=0.,y0=0.,z0=None):
+
+    def __init__(self,x0=None,y0=None,z0=None):
+        
+        
         self.x= x0
         self.y= y0
         self.z= z0 # attribut d'instance
+
+
     def __repr__(self):
         return f"Point({self.x},{self.y},{self.z})"
+    
+
+    
+
+
         
     def vars(self): #on transforme le point en un tuple [.vars()] -> (x,y,z)
         return (self.x,self.y,self.z)
@@ -26,7 +36,27 @@ class point:
         '''Plane -> To sphere'''
         return point(4*self.x/(4+self.x**2+self.y**2),4*self.y/(4+self.x**2+self.y**2),(4-self.x**2-self.y**2)/(4+self.x**2+self.y**2))
 
+
+#### Implementation avec numpy
+def tab_point(x_tab,y_tab,z_tab=None):   ## creates array of points
+    if isinstance(z_tab,np.ndarray):
+        if len(x_tab) != len(y_tab) or len(y_tab) != len(z_tab):
+            raise ValueError("Arrays must have the same length") 
+        else:
+            return np.array([point(x,y,z) for x,y,z in zip(x_tab,y_tab,z_tab)]) 
+    else:
+        if len(x_tab) != len(y_tab):
+            raise ValueError("Arrays must have the same length")
+        else:
+            return np.array([point(x,y) for x,y in zip(x_tab,y_tab)])
     
+
+def tab_exe(points_array, method_name, *args):  ### allows vectorisation of functions for point class
+    method = getattr(point, method_name)
+    vect_method = np.vectorize(method)
+    return vect_method(points_array, *args)
+
+   
 #################################################
 
 
@@ -114,7 +144,7 @@ class Rotation(point):
         vect_rot = vect.vect() @ (self.R3 @ self.R2 @ self.R1)
 
         x,y,z = vect_rot.tolist() #conversion np.array -> liste -> point
-        
+
         return point(x,y,z)
     
     def to_cam(self,vect): #Tranformation  de (nu,nv,nw) à (nx,ny,nz)
@@ -124,6 +154,10 @@ class Rotation(point):
         
         return point(x,y,z)
 
+def tab_rot(points_array, method_name, *args):  ### allows vectorisation of functions for Rotation class
+    method = getattr(Rotation, method_name)
+    vect_method = np.vectorize(method)
+    return vect_method(points_array, *args)
 
 #####################################################
 def cartesian_to_spherical(self):
@@ -135,19 +169,24 @@ def cartesian_to_spherical(self):
 point.spherical_coords = cartesian_to_spherical
 
 
-####### Test
+####### Test (à finir)
 
 
-print(Rotation(10,20,10).to_sun(point(0,0,1))) ### Testé à la main OK!
-print(Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262)))
+Rotation(10,20,10).to_sun(point(0,0,1)) ### Testé à la main OK!
+Rotation(10,20,10).to_cam(point(-0.05939117, 0.33682409, 0.93969262))
 
 point(1,2,1).screen(720,1920)
 
+H = np.linspace(0,5,5)
+K = np.linspace(0,5,5)
+L = np.linspace(0,5,5)
 
+tab = tab_point(H,K,L)
 
+tab_exe(tab,'stereo'))
          
 coords = point()
 
-print("All good")
+print("Projections: OK !")
      
 
