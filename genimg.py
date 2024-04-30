@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import os
 
 
 # Cartesien <-> Spherique
@@ -112,10 +113,6 @@ def lorentz(n_x, n_y, n_z, d_theta, d_phi, v):
     d_x, d_y, d_z = spherical_to_cartesian(1, d_theta, d_phi)
     direction = np.array([d_x, d_y, d_z])
 
-    ############################################################
-    # POURQUOI U HAUT EST EST DIFFERENT DE U BAS (SIGNE MOINS) #
-    ############################################################
-
     # Vecteurs t et u
     th = np.array([1, 0, 0, 0])
     tb = np.array([1, 0, 0, 0])  # Pour plus de clarete
@@ -140,19 +137,19 @@ def lorentz(n_x, n_y, n_z, d_theta, d_phi, v):
     wp = k[0]
     k = k / wp
 
-    return *k[1:], wp
+    return *k[1:], 1 / wp
 
 
 # Couleur associee a chaque direction
-def point_to_colour(resX, resY, theta, phi, wp):
+def point_to_colour(resX, resY, theta, phi, r):
     # mask_light = (theta // 5 + phi // 5) % 2 == 0
     #
     # # Valeurs de ref
-    # max = np.ones(wp.shape)
+    # max = np.ones(r.shape) * 255
     #
     # # Fonce et clair
-    # light = np.minimum(200 * wp, max).astype(int)
-    # dark = np.minimum(100 * wp, max).astype(int)
+    # light = np.minimum(200 * r, max).astype(int)
+    # dark = np.minimum(200 * r, max).astype(int)
     #
     # res = np.where(mask_light, f"{dark} {dark} {dark} ", f"{light} {light} {light} ")
 
@@ -163,10 +160,10 @@ def point_to_colour(resX, resY, theta, phi, wp):
     for i in range(resY):
         for j in range(resX):
             if (theta[i, j] // 5 + phi[i, j] // 5) % 2:
-                color = min(int(dark * wp[i, j]), 255)
+                color = min(int(dark * r[i, j]), 255)
                 res[i, j] = f"{color} {color} {color} "
             else:
-                color = min(int(light * wp[i, j]), 255)
+                color = min(int(light * r[i, j]), 255)
                 res[i, j] = f"{color} {color} {color} "
 
     return res
@@ -187,13 +184,13 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
         print(f"Rotations 🗸 ({time.time() - check:.2f}s)")
         check = time.time()
 
-    x_l, y_l, z_l, wp = lorentz(u_n, v_n, w_n, 0, 0, v)
+    x_l, y_l, z_l, r = lorentz(u_n, v_n, w_n, 0, 0, v)
     if DEBUG:
         print(f"Transformations de Lorentz 🗸 ({time.time() - check:.2f}s)")
         check = time.time()
 
     _, theta, phi = cartesian_to_spherical(x_l, y_l, z_l)
-    colour = point_to_colour(resX, resY, np.degrees(theta), np.degrees(phi), wp)
+    colour = point_to_colour(resX, resY, np.degrees(theta), np.degrees(phi), r)
     if DEBUG:
         print(f"Cartesien -> Spherique -> Couleurs 🗸 ({time.time() - check:.2f})s")
         check = time.time()
@@ -234,8 +231,8 @@ DEBUG = False
 tau_tot = 60  # s
 c = 1  # c
 v_fin = 0.999995  # c
-resX = 160  # pixels
-resY = 90  # pixels
+resX = 320  # pixels
+resY = 200  # pixels
 
 # Execution
 start_time = time.time()
@@ -256,6 +253,7 @@ for i in range(n):
         print(f"Progress: {(i+1)/n*100:6.2f}%")
         print("\n")
     else:
+        os.system("clear")  # "cls" sous Windows
         print(f"Progress: {(i+1)/n*100:6.2f}%")
 
 end_time = time.time()
