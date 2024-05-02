@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import os
+from PIL import Image
+import cv2
 
 
 # Cartesien <-> Spherique
@@ -137,34 +139,50 @@ def lorentz(n_x, n_y, n_z, d_theta, d_phi, v):
     wp = k[0]
     k = k / wp
 
-    return *k[1:], 1 / wp
+    return *k[1:], wp
 
+def modulation_couleur(C,w):  		#C = couleur, w = omega de lorentz
+
+	# Transfo sRGB -> lin
+    if C/255 <= 0.04045:
+	    C_lin = (C/255)/12.92
+
+    
+    else:
+        C_lin = ( (C/255 + 0.055)/1.055 ) ** 2.4
+
+	# Transfo fréquence (1/w)
+
+    C_lin = C_lin / w
+    
+	# Transfo lin -> sRGB
+
+    if C_lin <= 0.0031308:
+        C_nouveau = 12.92 * C_lin
+
+    else:
+        C_nouveau = 1.055 * ( C_lin ** (1/2.4)) - 0.055
+
+
+    return min(C_nouveau * 255 , 255)
 
 # Couleur associee a chaque direction
-def point_to_colour(resX, resY, theta, phi, r):
-    # mask_light = (theta // 5 + phi // 5) % 2 == 0
-    #
-    # # Valeurs de ref
-    # max = np.ones(r.shape) * 255
-    #
-    # # Fonce et clair
-    # light = np.minimum(200 * r, max).astype(int)
-    # dark = np.minimum(200 * r, max).astype(int)
-    #
-    # res = np.where(mask_light, f"{dark} {dark} {dark} ", f"{light} {light} {light} ")
-
-    # Test
+def point_to_colour(resX, resY, theta, phi, w):
+    
     dark = 100
     light = 200
     res = np.empty((resY, resX), dtype="object")
     for i in range(resY):
         for j in range(resX):
             if (theta[i, j] // 5 + phi[i, j] // 5) % 2:
-                color = min(int(dark * r[i, j]), 255)
-                res[i, j] = f"{color} {color} {color} "
+
+                color = modulation_couleur(dark,w[i,j])           
+                res[i,j] = color,color,color
+
             else:
-                color = min(int(light * r[i, j]), 255)
-                res[i, j] = f"{color} {color} {color} "
+
+                color = modulation_couleur(light,w[i,j])
+                res[i,j] = color,color,color
 
     return res
 
@@ -200,9 +218,6 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
 
 # Dessine l'ecran
 def paint(nom, resX, resY, f, psi, theta, phi, v):
-    # en-tete PPM
-    maxval = 255
-    ppm_header = f"P3\n{resX} {resY}\n{maxval}\n"
 
     # Tableaux de coordonnees
     x = np.linspace(1, resX, resX)
@@ -210,51 +225,52 @@ def paint(nom, resX, resY, f, psi, theta, phi, v):
     X, Y = np.meshgrid(x, y)
 
     # Tableau de couleurs pour chaque pixel
-    image_array = np.empty((resY, resX + 1), dtype="object")
-    image_array[:, :-1] = pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v)
+    image_array = np.empty((resY, resX))  
+    image_array = pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v)
 
-    # Colonne de newline a la fin et transformation en chaine de caracteres
-    image_array[:, -1] = "\n"  # "\r\n" sous Windows
-    image_data = "".join(image_array.flatten())
 
     if DEBUG:
         print(f"Image data 🗸 ({time.time() - check:.2f}s)")
 
-    # Enregistre les donnees de l'image sous forme d'un fichier PPM
-    with open(nom + ".ppm", "wb") as f:
-        f.write(bytearray(ppm_header, "ascii"))
-        f.write(bytearray(image_data, "ascii"))
+    #On crée un np.array, on reshape pour unpack les tuples, on convertit en image et on reconvertit en np.array (avec PIL) -> on output un array 3D de pixels
+    dt = np.dtype([('x', 'u1'), ('y', 'u1'), ('z', 'u1')])
+    img = Image.fromarray(image_array.astype(dt), "RGB")
+
+    if DEBUG:
+        img.save(str(nom)+".png") #les images ne sont plus sauvegardées en mémoire
+
+    return np.asarray(img)
 
 
 # Parametres d'execution
 DEBUG = False
-tau_tot = 60  # s
+tau_tot = 20  # s
 c = 1  # c
 v_fin = 0.999995  # c
-resX = 320  # pixels
-resY = 200  # pixels
+resX = 640  # pixels
+resY = 480  # pixels
+fps = 1
 
-# Execution
+# Execution ----> créer une fonction pour automatiser?
 start_time = time.time()
 
-n = tau_tot * 30
+n = tau_tot * fps
 tau = np.linspace(0, tau_tot, n)
 
 a = (c / tau_tot) * np.arctanh(v_fin / c)
 v = c * np.tanh(a / c * tau)
-
+video = cv2.VideoWriter("video test.avi", 0, fps=fps, frameSize= (resX,resY))  #ici on crée un objet vidéo de OpenCV
 for i in range(n):
     check_loop = time.time()
     check = time.time()
-    paint(str(i), resX, resY, 90, 0, 0, 0, v[i])
+    img = paint(i, resX, resY, 90, 0, 0, 0, v[i]) #ici on crée à chaque itération le np.array de pixels
+    video.write(img) #on utilise le array pour créer un frame
+    
 
     if DEBUG:
         print(f"Image {i+1} 🗸 ({time.time() - check_loop:.2f}s)")
-        print(f"Progress: {(i+1)/n*100:6.2f}%")
         print("\n")
-    else:
-        os.system("clear")  # "cls" sous Windows
-        print(f"Progress: {(i+1)/n*100:6.2f}%")
+    print(f"Progress: {(i+1)/n*100:6.2f}%")
 
 end_time = time.time()
 
