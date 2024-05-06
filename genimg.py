@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import os
-from PIL import Image
+from PIL import Image #optionnel, utile que pour sauvegarder les images individuellement
 import cv2
 
 
@@ -141,51 +141,36 @@ def lorentz(n_x, n_y, n_z, d_theta, d_phi, v):
 
     return *k[1:], wp
 
-def modulation_couleur(C,w):  		#C = couleur, w = omega de lorentz
+def modulation_couleur(C,w):      #C = couleur, w = omega de lorentz ----- la fonction est 100% vectorisée
+    # Transfo sRGB -> lin
+    C_lin = np.where(C/255 <= 0.04045, (C/255)/12.92, ((C/255 + 0.055)/1.055) ** 2.4)
 
-	# Transfo sRGB -> lin
-    if C/255 <= 0.04045:
-	    C_lin = (C/255)/12.92
-
-    
-    else:
-        C_lin = ( (C/255 + 0.055)/1.055 ) ** 2.4
-
-	# Transfo fréquence (1/w)
-
+    # Transfo fréquence (1/w)
     C_lin = C_lin / w
-    
-	# Transfo lin -> sRGB
 
-    if C_lin <= 0.0031308:
-        C_nouveau = 12.92 * C_lin
-
-    else:
-        C_nouveau = 1.055 * ( C_lin ** (1/2.4)) - 0.055
-
-
-    return min(C_nouveau * 255 , 255)
+    # Transfo lin -> sRGB
+    C_nouveau = np.where(C_lin <= 0.0031308, 12.92 * C_lin, 1.055 * ( C_lin ** (1/2.4)) - 0.055)
+   
+    return np.minimum((C_nouveau * 255).astype(int), 255)
 
 # Couleur associee a chaque direction
 def point_to_colour(resX, resY, theta, phi, w):
     
-    dark = 100
-    light = 200
-    res = np.empty((resY, resX), dtype="object")
-    for i in range(resY):
-        for j in range(resX):
-            if (theta[i, j] // 5 + phi[i, j] // 5) % 2:
+    dark = np.array([245,66,93])
+    light = np.array([200, 200, 200])
+    res = np.zeros([resY, resX , 3])  # array 3D: pour chaque couple de coords (= un pixel) on associe un array de dim (1x3) qui corréspond aux val RGB des couleurs
 
-                color = modulation_couleur(dark,w[i,j])           
-                res[i,j] = color,color,color
 
-            else:
+    mask = (theta // 5 + phi // 5) % 2 #on crée le mask corréspondant à la disposition des carrés
+    mask = np.repeat(mask[:,:,np.newaxis], 3, axis=2) #on extend le mask à la 3eme dimension
+    w = np.repeat(w[:,:,np.newaxis],3,axis=2) #on extend le tableau w (dim=resY,resX) pour qu'il devienne de dim ResY,ResX,3
 
-                color = modulation_couleur(light,w[i,j])
-                res[i,j] = color,color,color
-
+    color = np.where(mask, dark, light) # on crée un tableau 3D de couleurs RGB à partir du mask --> on va l'utiliser pour calculer les couleurs modulées
+    
+    res = modulation_couleur(color, w) #couleurs modulées
+    
+           
     return res
-
 
 # Couleur associee a chaque pixel
 def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
@@ -217,7 +202,7 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
 
 
 # Dessine l'ecran
-def paint(nom, resX, resY, f, psi, theta, phi, v):
+def paint(resX, resY, f, psi, theta, phi, v, nom=None):
 
     # Tableaux de coordonnees
     x = np.linspace(1, resX, resX)
@@ -225,31 +210,28 @@ def paint(nom, resX, resY, f, psi, theta, phi, v):
     X, Y = np.meshgrid(x, y)
 
     # Tableau de couleurs pour chaque pixel
-    image_array = np.empty((resY, resX))  
+    image_array = np.empty([resY, resX, 3])  
     image_array = pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v)
 
 
     if DEBUG:
         print(f"Image data 🗸 ({time.time() - check:.2f}s)")
 
-    #On crée un np.array, on reshape pour unpack les tuples, on convertit en image et on reconvertit en np.array (avec PIL) -> on output un array 3D de pixels
-    dt = np.dtype([('x', 'u1'), ('y', 'u1'), ('z', 'u1')])
-    img = Image.fromarray(image_array.astype(dt), "RGB")
+    if DEBUG_frame:
+        img.save(str(nom)+".png") #les images ne sont plus sauvegardées en mémoire. on peut tout de meme les sauvegarder pour le debug
 
-    if DEBUG:
-        img.save(str(nom)+".png") #les images ne sont plus sauvegardées en mémoire
-
-    return np.asarray(img)
+    return image_array
 
 
 # Parametres d'execution
-DEBUG = False
+DEBUG = True
+DEBUG_frame = False
 tau_tot = 20  # s
 c = 1  # c
 v_fin = 0.999995  # c
 resX = 640  # pixels
 resY = 480  # pixels
-fps = 1
+fps = 30
 
 # Execution ----> créer une fonction pour automatiser?
 start_time = time.time()
@@ -259,12 +241,13 @@ tau = np.linspace(0, tau_tot, n)
 
 a = (c / tau_tot) * np.arctanh(v_fin / c)
 v = c * np.tanh(a / c * tau)
-video = cv2.VideoWriter("video test.avi", 0, fps=fps, frameSize= (resX,resY))  #ici on crée un objet vidéo de OpenCV
+video = cv2.VideoWriter("video test 3.avi", 0, fps=fps, frameSize= (resX,resY))  #ici on crée un objet vidéo de OpenCV
 for i in range(n):
     check_loop = time.time()
     check = time.time()
-    img = paint(i, resX, resY, 90, 0, 0, 0, v[i]) #ici on crée à chaque itération le np.array de pixels
-    video.write(img) #on utilise le array pour créer un frame
+    img = paint(resX, resY, 90, 0, 0, 0, v[i]) #ici on crée à chaque itération le np.array de pixels
+    
+    video.write(np.uint8(img)) #on utilise le array pour créer un frame
     
 
     if DEBUG:
