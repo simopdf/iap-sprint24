@@ -62,30 +62,13 @@ def length_to_f(length):
 
 
 # Ecran <-> Plan
-def plane_to_screen(resX, resY, x, y, f):
-    L = f_to_length(f)
+def plane_to_screen(resX, resY, x, y, L):
     X = (2 * x / L) * resX + resX / 2
     Y = (2 * y / L) * resX + resY / 2
     return X, Y
 
 
-def screen_to_plane(resX, resY, X, Y, f):
-    L = f_to_length(f)
-    x = (X - resX / 2) * L / (2 * resX)
-    y = (Y - resY / 2) * L / (2 * resX)
-    return x, y
-
-
-# Ecran <-> Rectangle
-def rectange_to_screen(resX, resY, x, y, r):
-    L = r * np.pi
-    X = (2 * x / L) * resX + resX / 2
-    Y = (2 * y / L) * resX + resY / 2
-    return X, Y
-
-
-def screen_to_rectangle(resX, resY, X, Y, r):
-    L = r * np.pi
+def screen_to_plane(resX, resY, X, Y, L):
     x = (X - resX / 2) * L / (2 * resX)
     y = (Y - resY / 2) * L / (2 * resX)
     return x, y
@@ -214,7 +197,7 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
     # To VR or not to VR
     if EQUIRECTANGULAR:
         r = 1  # Sphere unitaire
-        x, y = screen_to_rectangle(resX, resY, X, Y, r)
+        x, y = screen_to_plane(resX, resY, X, Y, r * np.pi)
         theta_r, phi_r = rectangle_to_sphere(r, x, y)
         x_n, y_n, z_n = spherical_to_cartesian(r, theta_r, phi_r)
         if DEBUG:
@@ -222,7 +205,7 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
             check = time.time()
 
     else:
-        x, y = screen_to_plane(resX, resY, X, Y, f)
+        x, y = screen_to_plane(resX, resY, X, Y, f_to_length(f))
         x_n, y_n, z_n = plane_to_sphere(x, y)
         if DEBUG:
             print(f"Ecran -> Plan -> Sphere 🗸 ({time.time() - check:.2f}s)")
