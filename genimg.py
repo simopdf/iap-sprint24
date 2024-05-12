@@ -278,7 +278,7 @@ for i in range(n):
 
     # Cree a chaque iteration le np.array de pixels
     img = paint(resX, resY, 90, *orientaion, v[i], i)
-    img = cv2.putText(img,"v = {} c".format(v[i]), (10,15),cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1) # on affiche la vitesse en pourcentage de c
+    img = cv2.putText(np.uint8(img),"v = {} c".format(v[i]), (10,15),cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1) # on affiche la vitesse en pourcentage de c
 
     # Array -> Frame
     video.write(np.uint8(img))
