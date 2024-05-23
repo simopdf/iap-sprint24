@@ -8,7 +8,8 @@ import cv2
 # Cartesien <-> Spherique
 def cartesian_to_spherical(x, y, z):
     r = np.sqrt(x**2 + y**2 + z**2)
-    theta = np.arctan2(z, np.sqrt(x**2 + y**2))
+    r = 1
+    theta = np.arccos(z / r)
     phi = np.arctan2(y, x)
     return r, theta, phi
 
@@ -17,6 +18,21 @@ def spherical_to_cartesian(r, theta, phi):
     x = r * np.sin(theta) * np.cos(phi)
     y = r * np.sin(theta) * np.sin(phi)
     z = r * np.cos(theta)
+    return x, y, z
+
+
+# 2
+def cartesian_to_spherical2(x, y, z):
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(y / r)
+    phi = np.arctan2(x, z)
+    return r, theta, phi
+
+
+def spherical_to_cartesian2(r, theta, phi):
+    z = r * np.sin(theta) * np.cos(phi)
+    x = r * np.sin(theta) * np.sin(phi)
+    y = r * np.cos(theta)
     return x, y, z
 
 
@@ -36,14 +52,15 @@ def plane_to_sphere(x, y):
 
 # Projection equirectangulaire (compatible VR)
 def sphere_to_rectangle(r, theta, phi):
-    x_r = r * phi
-    y_r = r * (np.pi / 2 - theta)
+    phi_prime = phi % 2 * np.pi
+    x_r = r * (phi_prime - np.pi)
+    y_r = r * theta
     return x_r, y_r
 
 
 def rectangle_to_sphere(r, x_r, y_r):
-    theta = y_r / r - np.pi / 2
-    phi = x_r / r
+    theta = y_r / r
+    phi = x_r / r + np.pi
     return theta, phi
 
 
@@ -71,6 +88,19 @@ def plane_to_screen(resX, resY, x, y, L):
 def screen_to_plane(resX, resY, X, Y, L):
     x = (X - resX / 2) * L / (2 * resX)
     y = (Y - resY / 2) * L / (2 * resX)
+    return x, y
+
+
+# Ecran <-> Rectangle
+def rect_to_screen(resX, resY, x, y, L):
+    X = (x / L) * resX
+    Y = (2 * y / L) * resY
+    return X, Y
+
+
+def screen_to_rect(resX, resY, X, Y, L):
+    x = X * L / resX
+    y = Y * L / (2 * resY)
     return x, y
 
 
@@ -164,8 +194,8 @@ def modulation_couleur(C, w):
 
 
 # Couleur associee a chaque direction
-def point_to_colour(resX, resY, theta, phi, w):
-    # Coleurs des cadrillage
+def point_to_colour(source, resX, resY, theta, phi, w):
+    # Coleurs des cadrillage, en BRG
     if COLOR:
         dark = np.array([240, 70, 100])
         light = np.array([180, 180, 180])
@@ -191,15 +221,15 @@ def point_to_colour(resX, resY, theta, phi, w):
 
 
 # Couleur associee a chaque pixel
-def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
+def pixel_to_colour(source, resX, resY, f, X, Y, psi, theta, phi, v):
     global check
 
     # To VR or not to VR
     if EQUIRECTANGULAR:
         r = 1  # Sphere unitaire
-        x, y = screen_to_plane(resX, resY, X, Y, r * np.pi)
+        x, y = screen_to_rect(resX, resY, X, Y, 2 * r * np.pi)
         theta_r, phi_r = rectangle_to_sphere(r, x, y)
-        x_n, y_n, z_n = spherical_to_cartesian(r, theta_r, phi_r)
+        x_n, y_n, z_n = spherical_to_cartesian2(r, theta_r, phi_r)
         if DEBUG:
             print(f"Ecran -> Rectangle -> Sphere 🗸 ({time.time() - check:.2f}s)")
             check = time.time()
@@ -222,16 +252,20 @@ def pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v):
         check = time.time()
 
     _, theta, phi = cartesian_to_spherical(x_l, y_l, z_l)
-    color = point_to_colour(resX, resY, np.degrees(theta), np.degrees(phi), r)
     if DEBUG:
-        print(f"Cartesien -> Spherique -> Couleurs 🗸 ({time.time() - check:.2f})s")
+        print(f"Cartesien -> Spherique 🗸 ({time.time() - check:.2f})s")
+        check = time.time()
+
+    color = point_to_colour(source, resX, resY, np.degrees(theta), np.degrees(phi), r)
+    if DEBUG:
+        print(f"Couleurs 🗸 ({time.time() - check:.2f})s")
         check = time.time()
 
     return color
 
 
 # Dessine l'ecran
-def paint(resX, resY, f, psi, theta, phi, v, nom=None):
+def paint(source, resX, resY, f, psi, theta, phi, v, nom=None):
     # Tableaux de coordonnees
     x = np.linspace(1, resX, resX)
     y = np.linspace(1, resY, resY)
@@ -239,7 +273,7 @@ def paint(resX, resY, f, psi, theta, phi, v, nom=None):
 
     # Tableau de couleurs pour chaque pixel
     image_array = np.empty((resY, resX, 3))
-    image_array = pixel_to_colour(resX, resY, f, X, Y, psi, theta, phi, v)
+    image_array = pixel_to_colour(source, resX, resY, f, X, Y, psi, theta, phi, v)
 
     if DEBUG:
         print(f"Image data 🗸 ({time.time() - check:.2f}s)")
@@ -250,19 +284,28 @@ def paint(resX, resY, f, psi, theta, phi, v, nom=None):
 # Parametres d'execution
 DEBUG = False
 DEBUG_FRAME = False
-EQUIRECTANGULAR = True
+EQUIRECTANGULAR = False
 COLOR = True
-tau_tot = 10  # S
+tau_tot = 1  # S
 c = 1  # C
-v_fin = 0.999995  # C
-orientaion = (0, 0, 0)  # Orientation camera (psi, theta, phi)
-direction = (-np.pi / 2, 0)  # Direction de deplacement (theta, phi)
-resX = 320  # Pixels
-resY = 200  # Pixels
+v_fin = 0.995  # C
+orientaion = (
+    0,
+    np.pi / 2,
+    -np.pi / 2,
+)  # Orientation camera (psi, theta, phi), en radians
+direction = (np.pi / 2, 0)  # Direction de deplacement (theta, phi), en radians
+resX = 192  # Pixels
+resY = 108  # Pixels
+f = 90  # Champ de vue, en degres
 fps = 30  # Fps
 
 # Execution
 start_time = time.time()
+
+# Ouverture
+# source = cv2.imread("gaia-all-sky.png")
+source = None
 
 n = tau_tot * fps
 tau = np.linspace(0, tau_tot, n)
@@ -270,15 +313,16 @@ tau = np.linspace(0, tau_tot, n)
 a = (c / tau_tot) * np.arctanh(v_fin / c)
 v = c * np.tanh(a / c * tau)
 
-# Cree un objet video de OpenCV
-video = cv2.VideoWriter("film.avi", 0, fps, (resX, resY))
+# Cree un objet video de OpenCV, avc1 est une compression typique pour les videos web
+fourcc = cv2.VideoWriter_fourcc(*"avc1")
+video = cv2.VideoWriter("film.mp4", fourcc, fps, (resX, resY))
+
 for i in range(n):
     check_loop = time.time()
     check = time.time()
 
     # Cree a chaque iteration le np.array de pixels
-    img = paint(resX, resY, 90, *orientaion, v[i], i)
-    img = cv2.putText(np.uint8(img),"v = {} c".format(v[i]), (10,15),cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1) # on affiche la vitesse en pourcentage de c
+    img = paint(source, resX, resY, f, *orientaion, v[i], i)
 
     # Array -> Frame
     video.write(np.uint8(img))
